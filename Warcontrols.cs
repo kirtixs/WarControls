@@ -18,7 +18,7 @@ using PRoCon.Core.Maps;
 
 namespace PRoConEvents {
 
-  public class WarControls : PRoConPluginAPI, IPRoConPluginInterface {
+	public class WarControls : PRoConPluginAPI, IPRoConPluginInterface {
 	
 		//devsettings
 		private bool isDebug = true;
@@ -26,7 +26,7 @@ namespace PRoConEvents {
 		//time to react for the other team after the first ready
 		private int readyCountdown = 30;
 
-		//
+		//time until server will restart
 		private int startCountdown = 10;
 		
 		
@@ -47,7 +47,7 @@ namespace PRoConEvents {
 		private List<string> team2Players = new List<string>();
 		
 		public void init() {
-		this.ExecuteCommand("procon.protected.send", "admin.listPlayers", "all");
+		
 			this.Debug("WarControls enabled...");
 		}
 
@@ -55,7 +55,8 @@ namespace PRoConEvents {
 			this.Debug("WarControls disabled...");
 		}
 		
-		public override void OnGlobalChat(string speaker, string message) { 
+		public override void OnGlobalChat(string speaker, string message) {
+            this.ExecuteCommand("procon.protected.send", "admin.listPlayers", "all");
 			string[] arguments = message.Split(' ');
 			if(arguments[0].CompareTo(this.commandPrefix+this.readyCommand) == 0 && this.getNumberOfArguments(message) == 1){
 				this.setReady(speaker);
@@ -79,7 +80,7 @@ namespace PRoConEvents {
 			if(Math.Abs(readyTime-this.getUnixTimeStamp()) > this.readyCountdown){
 
 				this.setReadyTime(teamID);
-				this.ExecuteCommand("procon.protected.send", "admin.say", playerName+" has set team "+teamID+" ready", "all");
+				this.ExecuteCommand("procon.protected.send", "admin.say", playerName+" has set team "+this.getTeamName(teamID)+" ready", "all");
 				this.Debug("readyTime:"+readyTime);
 				this.Debug("otherReadyTime:"+otherReadyTime);
 				if((readyTime-otherReadyTime) > this.readyCountdown){
@@ -90,16 +91,29 @@ namespace PRoConEvents {
 					this.startMatch();
 				}
 			} else {
-					this.ExecuteCommand("procon.protected.send", "admin.say", "Team "+teamID+" is already ready", "all");
+					this.ExecuteCommand("procon.protected.send", "admin.say", "Team "+this.getTeamName(teamID)+" is already ready", "all");
 			}
-		
 		}
+
+        public void resetReadyTime(){
+            this.team1ReadyTime = 0;
+            this.team2ReadyTime = 0;
+        }
+
+        public string getTeamName(int teamID){
+            if (teamID == 1){
+                return "Russian Army";
+            } else {
+                return "U.S. Army";
+            }
+
+        }
 		
 		public void startMatch(){
-			
+            this.resetReadyTime();
 			for(int i = 0; i < this.startCountdown; i++){
-				this.ExecuteCommand("procon.protected.send", "admin.say", "Live after doublerestart in "+(this.startCountdown - i), "all");
-			}			
+				this.ExecuteCommand("procon.protected.send", "admin.yell", "Live after restart in "+(this.startCountdown - i), "all");
+			}
 			this.ExecuteCommand("procon.protected.send", "mapList.restartRound");
 		}
 		
