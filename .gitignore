@@ -1,0 +1,6 @@
+bin/
+obj/
+Properties/
+WarControls.csproj
+Warcontrols.sln
+WarControls.v11.suo
