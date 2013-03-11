@@ -29,43 +29,49 @@ namespace PRoConEvents {
 		//time until server will restart
 		private int startCountdown = 10;
 		
-		
-		//all users
+        //all users
 		private string commandPrefix = "@";
 		private string readyCommand = "ready";
-		
+        private string stopCommand = "stop";
+
 		//internal vars
-		private bool team1Ready = false;
-		private bool team2Ready = false;
 		private int team1ReadyTime = 0;
 		private int team2ReadyTime = 0;
-        private int team1PlayerCount = 0;
-		private int team2PlayerCount = 0;
 		
 		//@todo: read up on multidimensional lists... 
 		private List<string> team1Players = new List<string>();
 		private List<string> team2Players = new List<string>();
 		
 		public void init() {
-		
+		    this.ExecuteCommand("procon.protected.send", "admin.listPlayers", "all");
 			this.Debug("WarControls enabled...");
 		}
 
 		public void destroy(){
 			this.Debug("WarControls disabled...");
 		}
-		
-		public override void OnGlobalChat(string speaker, string message) {
+
+		public override void OnGlobalChat(string playerName, string message) {
             this.ExecuteCommand("procon.protected.send", "admin.listPlayers", "all");
-			string[] arguments = message.Split(' ');
-			if(arguments[0].CompareTo(this.commandPrefix+this.readyCommand) == 0 && this.getNumberOfArguments(message) == 1){
-				this.setReady(speaker);
-			}
+            string[] arguments = message.Split(' ');
+			if(arguments[0].CompareTo(this.commandPrefix + this.readyCommand) == 0 && this.getNumberOfArguments(message) == 1){
+
+                if(this.getTeamByPlayer(playerName) == 0) {
+                    this.ExecuteCommand("procon.protected.send", "admin.say", "Procon has no playerlist yet. Please try again in a few seconds.", "all");
+                } else {
+                    this.setReady(playerName);
+                }
+            } else if (arguments[0].CompareTo(this.commandPrefix + this.stopCommand) == 0 && this.getNumberOfArguments(message) == 1){
+                this.stopMatch(playerName);
+            }
 		}
-		
+
+        public void stopMatch(string playerName) {
+            this.ExecuteCommand("procon.protected.send", "admin.say", "Team " + this.getTeamName(this.getTeamByPlayer(playerName)) + " is not ready", "all");
+        }
+
 		public void setReady(string playerName){
 			int teamID = this.getTeamByPlayer(playerName);
-			this.Debug("playername :"+playerName);
 			int otherTeamID = 0;
 			
 			if(teamID == 1){
@@ -73,26 +79,21 @@ namespace PRoConEvents {
 			} else {
 				otherTeamID = 1;
 			}
-			
+
 			int readyTime = this.getReadyTime(teamID);
 			int otherReadyTime = this.getReadyTime(otherTeamID);
 			
-			if(Math.Abs(readyTime-this.getUnixTimeStamp()) > this.readyCountdown){
-
-				this.setReadyTime(teamID);
-				this.ExecuteCommand("procon.protected.send", "admin.say", playerName+" has set team "+this.getTeamName(teamID)+" ready", "all");
-				this.Debug("readyTime:"+readyTime);
-				this.Debug("otherReadyTime:"+otherReadyTime);
-				if((readyTime-otherReadyTime) > this.readyCountdown){
-					this.team1ReadyTime = 0;
-					this.team2ReadyTime = 0;
-					this.ExecuteCommand("procon.protected.send", "admin.say", "one of the teams hasn't reacted fast enoguh, resetting both teams", "all");
-				} else if(readyTime != otherReadyTime) {
-					this.startMatch();
-				}
-			} else {
-					this.ExecuteCommand("procon.protected.send", "admin.say", "Team "+this.getTeamName(teamID)+" is already ready", "all");
-			}
+            if(readyTime != otherReadyTime && this.getUnixTimeStamp()-readyTime > this.readyCountdown 
+                || readyTime != otherReadyTime && this.getUnixTimeStamp()-otherReadyTime > this.readyCountdown && otherReadyTime != 0
+                || readyTime != 0 && otherReadyTime != 0 && readyTime-otherReadyTime > this.readyCountdown){
+                this.ExecuteCommand("procon.protected.send", "admin.say", "Team "+this.getTeamName(otherTeamID)+" wasn't ready soon enough", "all");    
+                this.resetReadyTime();
+            }else if(readyTime == 0) {
+                this.setReadyTime(teamID);
+                this.ExecuteCommand("procon.protected.send", "admin.say", playerName + " has set team " + this.getTeamName(teamID) + " ready", "all");
+            } else {
+                this.ExecuteCommand("procon.protected.send", "admin.say", "Team " + this.getTeamName(teamID) + " is already set ready", "all");
+            }
 		}
 
         public void resetReadyTime(){
@@ -102,11 +103,9 @@ namespace PRoConEvents {
 
         public string getTeamName(int teamID){
             if (teamID == 1){
-                return "Russian Army";
-            } else {
                 return "U.S. Army";
-            }
-
+            } 
+            return "Russian Army";   
         }
 		
 		public void startMatch(){
@@ -134,35 +133,31 @@ namespace PRoConEvents {
 		}
 
 		public int getTeamByPlayer(string playerName){
-			this.Debug("playername: "+playerName);
 			foreach(string player in team1Players){
 				if(player == playerName){
-					return 1;
+                    return 1;
 				}
 			}
 			foreach(string player in team2Players){
 				if(player == playerName){
-					return 2;
+                    return 2;
 				}
 			}
-			return 0;
+            return 0;
 		}
 		
 		public int getReadyTime(int teamID){
 			if(teamID == 1){
 				return this.team1ReadyTime;
-			} else {
-				return this.team2ReadyTime;
-			}
+			} 
+			return this.team2ReadyTime;
 		}
 		
 		public int getOtherTeamID(int teamID){
 			if(teamID == 1){
 				return 2;
-			} else {
-				return 1;
-			}
-			
+			} 
+			return 1;
 		}
 		
 		public void setReadyTime(int teamID){
@@ -198,7 +193,7 @@ namespace PRoConEvents {
         }
 
         public string GetPluginVersion() {
-            return "0.1a";
+            return "0.2a";
         }
 
         public string GetPluginAuthor() {
@@ -214,8 +209,12 @@ namespace PRoConEvents {
 		}
 		
 		public void OnPluginLoaded(string strHostName, string strPort, string strPRoConVersion) {
-			this.RegisterEvents(this.GetType().Name, "OnGlobalChat", "OnListPlayers"); 
+			this.RegisterEvents(this.GetType().Name, "OnGlobalChat", "OnListPlayers", "OnLoadingLevel"); 
 		}
+
+        public override void OnLoadingLevel(string mapFileName, int roundsPlayed, int roundsTotal) {
+            this.ExecuteCommand("procon.protected.send", "admin.listPlayers", "all");
+        }
 		
 		public void OnPluginEnable() {
 			this.init();
