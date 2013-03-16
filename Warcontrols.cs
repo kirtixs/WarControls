@@ -19,7 +19,7 @@ using PRoCon.Core.Maps;
 namespace PRoConEvents {
 
 	public class WarControls : PRoConPluginAPI, IPRoConPluginInterface {
-	
+
 		//devsettings
 		private bool isDebug = true;
 
@@ -28,7 +28,7 @@ namespace PRoConEvents {
 
 		//time until server will restart
 		private int startCountdown = 10;
-		
+
         //all users
 		private string commandPrefix = "@";
 		private string readyCommand = "ready";
@@ -37,11 +37,11 @@ namespace PRoConEvents {
 		//internal vars
 		private int team1ReadyTime = 0;
 		private int team2ReadyTime = 0;
-		
+
 		//@todo: read up on multidimensional lists... 
 		private List<string> team1Players = new List<string>();
 		private List<string> team2Players = new List<string>();
-		
+
 		public void init() {
 		    this.ExecuteCommand("procon.protected.send", "admin.listPlayers", "all");
 			this.Debug("WarControls enabled...");
@@ -73,7 +73,7 @@ namespace PRoConEvents {
 		public void setReady(string playerName){
 			int teamID = this.getTeamByPlayer(playerName);
 			int otherTeamID = 0;
-			
+
 			if(teamID == 1){
 				otherTeamID = 2;
 			} else {
@@ -82,13 +82,12 @@ namespace PRoConEvents {
 
 			int readyTime = this.getReadyTime(teamID);
 			int otherReadyTime = this.getReadyTime(otherTeamID);
-			
-            if(readyTime != otherReadyTime && this.getUnixTimeStamp()-readyTime > this.readyCountdown 
-                || readyTime != otherReadyTime && this.getUnixTimeStamp()-otherReadyTime > this.readyCountdown && otherReadyTime != 0
-                || readyTime != 0 && otherReadyTime != 0 && readyTime-otherReadyTime > this.readyCountdown){
-                this.ExecuteCommand("procon.protected.send", "admin.say", "Team "+this.getTeamName(otherTeamID)+" wasn't ready soon enough", "all");    
+
+            if(readyTime - otherReadyTime > this.startCountdown && otherReadyTime > 0
+                || this.getUnixTimeStamp() - otherReadyTime > this.getUnixTimeStamp()) {
+                this.ExecuteCommand("procon.protected.send", "admin.say", "One of the teams wasn't ready soon enough", "all");    
                 this.resetReadyTime();
-            }else if(readyTime == 0) {
+            } else if(readyTime == 0) {
                 this.setReadyTime(teamID);
                 this.ExecuteCommand("procon.protected.send", "admin.say", playerName + " has set team " + this.getTeamName(teamID) + " ready", "all");
             } else {
@@ -107,7 +106,7 @@ namespace PRoConEvents {
             } 
             return "Russian Army";   
         }
-		
+
 		public void startMatch(){
             this.resetReadyTime();
 			for(int i = 0; i < this.startCountdown; i++){
@@ -115,12 +114,12 @@ namespace PRoConEvents {
 			}
 			this.ExecuteCommand("procon.protected.send", "mapList.restartRound");
 		}
-		
+
 		public override void OnListPlayers(List<CPlayerInfo> players, CPlayerSubset subset) {
 
 			List<string> tmpTeam1Players = new List<string>();
 			List<string> tmpTeam2Players = new List<string>();
-			
+
 			foreach(CPlayerInfo player in players){
 					if(player.TeamID == 1){
 						tmpTeam1Players.Add(player.SoldierName);
@@ -145,21 +144,21 @@ namespace PRoConEvents {
 			}
             return 0;
 		}
-		
+
 		public int getReadyTime(int teamID){
 			if(teamID == 1){
 				return this.team1ReadyTime;
 			} 
 			return this.team2ReadyTime;
 		}
-		
+
 		public int getOtherTeamID(int teamID){
 			if(teamID == 1){
 				return 2;
 			} 
 			return 1;
 		}
-		
+
 		public void setReadyTime(int teamID){
 			if(teamID == 1){
 				this.team1ReadyTime = this.getUnixTimeStamp();
@@ -167,17 +166,17 @@ namespace PRoConEvents {
 				this.team2ReadyTime = this.getUnixTimeStamp();
 			}
 		}
-		
+
 		public int getUnixTimeStamp(){
 			TimeSpan _TimeSpan = (DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0));
 			return unchecked((int)_TimeSpan.TotalSeconds);
 		}
-				
-		
+
+
 		public int getNumberOfArguments(string message){
 			return message.Split(' ').Length;
 		}
-		
+
 		public void Debug(string message){
 			if(this.isDebug){
 				this.LogWrite(message);
@@ -187,7 +186,7 @@ namespace PRoConEvents {
 		public void LogWrite(String msg){
 			this.ExecuteCommand("procon.protected.pluginconsole.write", msg);
 		}
-		
+
         public string GetPluginName() {
             return "WarControls";
         }
@@ -203,11 +202,11 @@ namespace PRoConEvents {
         public string GetPluginWebsite() {
             return "github.com/redshark1802";
         }
-		
+
         public string GetPluginDescription() {
             return @"<h2>WarControls</h2>";
 		}
-		
+
 		public void OnPluginLoaded(string strHostName, string strPort, string strPRoConVersion) {
 			this.RegisterEvents(this.GetType().Name, "OnGlobalChat", "OnListPlayers", "OnLoadingLevel"); 
 		}
@@ -215,24 +214,24 @@ namespace PRoConEvents {
         public override void OnLoadingLevel(string mapFileName, int roundsPlayed, int roundsTotal) {
             this.ExecuteCommand("procon.protected.send", "admin.listPlayers", "all");
         }
-		
+
 		public void OnPluginEnable() {
 			this.init();
 		}
-		
+
 		public void OnPluginDisable() {
 			this.destroy();
 		}
-		
+
 		public List<CPluginVariable> GetDisplayPluginVariables() {
 			List<CPluginVariable> varDisplayList = new List<CPluginVariable>();
-			
+
 			return varDisplayList;
 		}
-		
+
 		public List<CPluginVariable> GetPluginVariables() {
 			List<CPluginVariable> varList = new List<CPluginVariable>();
-			
+
 			return varList;
 		}
 		public void SetPluginVariable(string strVariable, string strValue) {
