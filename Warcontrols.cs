@@ -38,6 +38,8 @@ namespace PRoConEvents {
 		private int team1ReadyTime = 0;
 		private int team2ReadyTime = 0;
 
+        private string language = "en";
+
 		//@todo: read up on multidimensional lists... 
 		private List<string> team1Players = new List<string>();
 		private List<string> team2Players = new List<string>();
@@ -227,8 +229,8 @@ namespace PRoConEvents {
 
 		public List<CPluginVariable> GetDisplayPluginVariables() {
 			List<CPluginVariable> varDisplayList = new List<CPluginVariable>();
-
             varDisplayList.Add(new CPluginVariable("Timelimit for both teams to be ready", typeof(int), this.startCountdown));
+            varDisplayList.Add(new CPluginVariable("Language", "enum.BasicEnumExampleCustomList("+String.Join("|", this.getLanguages())+")", this.language));
 			return varDisplayList;
 		}
 
@@ -240,7 +242,26 @@ namespace PRoConEvents {
 
             if (strVariable == "Timelimit for both teams to be ready") {
                 this.startCountdown = Convert.ToInt32(strValue);
+            } else if(strVariable == "Language") {
+                this.language = strValue;
             }
 		}
+
+        public string[] getLanguages() {
+
+            string path = @".\Plugins\BF3\WarControls\lang\";
+            string[] files = Directory.GetFiles(path, "*.txt");
+
+            string[] languages = new string[files.Length];
+
+            int pos = 0;
+            foreach(string file in files) {
+                string lang = file.Replace(path, "").Replace(".txt", "");
+                languages[pos] = lang;
+                pos++;
+            }
+
+            return languages;
+        }
 	}
 }
