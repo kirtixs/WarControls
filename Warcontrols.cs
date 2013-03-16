@@ -6,15 +6,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
-using System.Text.RegularExpressions;
+using System.Xml;
+
 
 using PRoCon.Core;
 using PRoCon.Core.Plugin;
 using PRoCon.Core.Plugin.Commands;
 using PRoCon.Core.Players;
 using PRoCon.Core.Players.Items;
-using PRoCon.Core.Battlemap;
-using PRoCon.Core.Maps;
 
 namespace PRoConEvents {
 
@@ -47,7 +46,7 @@ namespace PRoConEvents {
 		public void init() {
 		    this.ExecuteCommand("procon.protected.send", "admin.listPlayers", "all");
 			this.Debug("WarControls enabled...");
-		}
+        }
 
 		public void destroy(){
 			this.Debug("WarControls disabled...");
@@ -69,7 +68,7 @@ namespace PRoConEvents {
 		}
 
         public void stopMatch(string playerName) {
-            this.ExecuteCommand("procon.protected.send", "admin.say", "Team " + this.getTeamName(this.getTeamByPlayer(playerName)) + " is not ready", "all");
+            this.ExecuteCommand("procon.protected.send", "admin.say", string.Format(this.getLocalizedString("TeamNotReady"), this.getTeamName(this.getTeamByPlayer(playerName))), "all");
         }
 
 		public void setReady(string playerName){
@@ -87,13 +86,13 @@ namespace PRoConEvents {
 
             if(readyTime - otherReadyTime > this.startCountdown && otherReadyTime > 0
                 || this.getUnixTimeStamp() - otherReadyTime > this.getUnixTimeStamp()) {
-                this.ExecuteCommand("procon.protected.send", "admin.say", "One of the teams wasn't ready soon enough", "all");    
+                this.ExecuteCommand("procon.protected.send", "admin.say", this.getLocalizedString("NotReadySoonEnough"), "all");    
                 this.resetReadyTime();
             } else if(readyTime == 0) {
                 this.setReadyTime(teamID);
-                this.ExecuteCommand("procon.protected.send", "admin.say", playerName + " has set team " + this.getTeamName(teamID) + " ready", "all");
+                this.ExecuteCommand("procon.protected.send", "admin.say",string.Format(this.getLocalizedString("TeamReady"), playerName, this.getTeamName(teamID)) , "all");
             } else {
-                this.ExecuteCommand("procon.protected.send", "admin.say", "Team " + this.getTeamName(teamID) + " is already set ready", "all");
+                this.ExecuteCommand("procon.protected.send", "admin.say", string.Format(this.getLocalizedString("AlreadyReady"), this.getTeamName(teamID)), "all");
             }
 		}
 
@@ -112,7 +111,7 @@ namespace PRoConEvents {
 		public void startMatch(){
             this.resetReadyTime();
 			for(int i = 0; i < this.startCountdown; i++){
-				this.ExecuteCommand("procon.protected.send", "admin.yell", "Live after restart in "+(this.startCountdown - i), "all");
+				this.ExecuteCommand("procon.protected.send", "admin.yell", string.Format(this.getLocalizedString("Live"), this.startCountdown - i), "all");
 			}
 			this.ExecuteCommand("procon.protected.send", "mapList.restartRound");
 		}
@@ -196,7 +195,7 @@ namespace PRoConEvents {
         }
 
         public string GetPluginVersion() {
-            return "0.2a";
+            return "0.3a";
         }
 
         public string GetPluginAuthor() {
@@ -229,9 +228,11 @@ namespace PRoConEvents {
 
 		public List<CPluginVariable> GetDisplayPluginVariables() {
 			List<CPluginVariable> varDisplayList = new List<CPluginVariable>();
+
             varDisplayList.Add(new CPluginVariable("Timelimit for both teams to be ready", typeof(int), this.startCountdown));
-            varDisplayList.Add(new CPluginVariable("Language", "enum.BasicEnumExampleCustomList("+String.Join("|", this.getLanguages())+")", this.language));
-			return varDisplayList;
+            varDisplayList.Add(new CPluginVariable("Language", "enum.BasicEnumExampleCustomList("+string.Join("|", this.getLanguages())+")", this.language));
+			
+            return varDisplayList;
 		}
 
 		public List<CPluginVariable> GetPluginVariables() {
@@ -249,19 +250,49 @@ namespace PRoConEvents {
 
         public string[] getLanguages() {
 
-            string path = @".\Plugins\BF3\WarControls\lang\";
-            string[] files = Directory.GetFiles(path, "*.txt");
+            string[] files = Directory.GetFiles(this.getLanguagePath(), "*.xml");
 
             string[] languages = new string[files.Length];
 
             int pos = 0;
             foreach(string file in files) {
-                string lang = file.Replace(path, "").Replace(".txt", "");
+                string lang = file.Replace(this.getLanguagePath(), "").Replace(".xml", "");
                 languages[pos] = lang;
                 pos++;
             }
 
             return languages;
+        }
+
+        public string getLocalizedString(string stringIdentifier) {
+
+            string localizedString = this.getXmlValue(stringIdentifier, this.language);
+
+            if(localizedString == "" && this.language != "en") {
+                localizedString = this.getXmlValue(stringIdentifier, "en");
+            }
+            return localizedString;
+        }
+
+
+        public string getXmlValue(string stringIdentifier, string language) {
+
+            XmlDocument doc= new XmlDocument();
+            doc.Load(this.getLanguagePath()+language+".xml");
+
+            XmlNodeList xnList = doc.SelectNodes("/LocalizedStrings");
+
+            string localizedString = "";
+            foreach(XmlNode xn in xnList) {
+                localizedString = xn[stringIdentifier].InnerText;
+            }
+            
+            return localizedString;
+        }
+
+        public string getLanguagePath() {
+
+            return @".\Plugins\BF3\WarControls\lang\";
         }
 	}
 }
