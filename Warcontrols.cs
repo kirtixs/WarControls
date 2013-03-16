@@ -115,6 +115,8 @@ namespace PRoConEvents {
 			this.ExecuteCommand("procon.protected.send", "mapList.restartRound");
 		}
 
+
+
 		public override void OnListPlayers(List<CPlayerInfo> players, CPlayerSubset subset) {
 
 			List<string> tmpTeam1Players = new List<string>();
@@ -226,15 +228,19 @@ namespace PRoConEvents {
 		public List<CPluginVariable> GetDisplayPluginVariables() {
 			List<CPluginVariable> varDisplayList = new List<CPluginVariable>();
 
+            varDisplayList.Add(new CPluginVariable("Timelimit for both teams to be ready", typeof(int), this.startCountdown));
 			return varDisplayList;
 		}
 
 		public List<CPluginVariable> GetPluginVariables() {
-			List<CPluginVariable> varList = new List<CPluginVariable>();
-
-			return varList;
+            return GetDisplayPluginVariables();
 		}
+
 		public void SetPluginVariable(string strVariable, string strValue) {
+
+            if (strVariable == "Timelimit for both teams to be ready") {
+                this.startCountdown = Convert.ToInt32(strValue);
+            }
 		}
 	}
 }
