@@ -39,6 +39,8 @@ namespace PRoConEvents {
 
         private string language = "en";
 
+        private bool doubleRestart = true;
+
 		//@todo: read up on multidimensional lists... 
 		private List<string> team1Players = new List<string>();
 		private List<string> team2Players = new List<string>();
@@ -211,8 +213,21 @@ namespace PRoConEvents {
 		}
 
 		public void OnPluginLoaded(string strHostName, string strPort, string strPRoConVersion) {
-			this.RegisterEvents(this.GetType().Name, "OnGlobalChat", "OnListPlayers", "OnLoadingLevel"); 
+			this.RegisterEvents(this.GetType().Name, "OnGlobalChat", "OnListPlayers", "OnLoadingLevel", "OnLevelLoaded"); 
 		}
+
+        public override void OnLevelLoaded(string mapFileName, string Gamemode, int roundsPlayed, int roundsTotal){
+            if(this.doubleRestart) {
+                this.restartLevel();
+                this.doubleRestart = false;
+            } else {
+                this.doubleRestart = true;
+            }
+        }
+
+        public void restartLevel() {
+            this.ExecuteCommand("procon.protected.send", "mapList.restartRound");
+        }
 
         public override void OnLoadingLevel(string mapFileName, int roundsPlayed, int roundsTotal) {
             this.ExecuteCommand("procon.protected.send", "admin.listPlayers", "all");
@@ -266,7 +281,8 @@ namespace PRoConEvents {
 
         public string getLocalizedString(string stringIdentifier) {
 
-            string localizedString = this.getXmlValue(stringIdentifier, this.language);
+            string localizedString;
+            localizedString = this.getXmlValue(stringIdentifier, this.language);
 
             if(localizedString == "" && this.language != "en") {
                 localizedString = this.getXmlValue(stringIdentifier, "en");
@@ -276,19 +292,24 @@ namespace PRoConEvents {
 
 
         public string getXmlValue(string stringIdentifier, string language) {
-
-            XmlDocument doc= new XmlDocument();
-            doc.Load(this.getLanguagePath()+language+".xml");
-
-            XmlNodeList xnList = doc.SelectNodes("/LocalizedStrings");
-
             string localizedString = "";
-            foreach(XmlNode xn in xnList) {
-                localizedString = xn[stringIdentifier].InnerText;
+            try {
+                XmlDocument doc = new XmlDocument();
+                doc.Load(this.getLanguagePath() + language + ".xml");
+
+                XmlNodeList xnList = doc.SelectNodes("/LocalizedStrings");
+
+                foreach(XmlNode xn in xnList) {
+                    localizedString = xn[stringIdentifier].InnerText;
+                }
+
+                return localizedString;
+            } catch(XmlException ex) {
+                this.Debug(String.Format("XmlException: {0}", ex.Message));
             }
-            
             return localizedString;
         }
+
 
         public string getLanguagePath() {
 

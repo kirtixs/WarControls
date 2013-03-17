@@ -1,9 +1,7 @@
 <LocalizedStrings>
 	<TeamReady>{0} has set team {1} ready </TeamReady>
 	<TeamNotReady>Team {0} is not ready</TeamNotReady>
-	<NotReadySoonEnough>One of the teams wasn't ready soon enough</ReadySoonEnough>
+	<NotReadySoonEnough>One of the teams wasn't ready soon enough</NotReadySoonEnough>
 	<AlreadyReady>Team {0} is already ready</AlreadyReady>
 	<Live>Live after restart in {0}</Live>
-	<StartCountdown>Timelimit for both teams to be ready</StartCountdown>
-	<Language>Language</Language>
 </LocalizedStrings>	
