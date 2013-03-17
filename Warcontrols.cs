@@ -15,6 +15,8 @@ using PRoCon.Core.Plugin.Commands;
 using PRoCon.Core.Players;
 using PRoCon.Core.Players.Items;
 
+using System.Threading;
+
 namespace PRoConEvents {
 
 	public class WarControls : PRoConPluginAPI, IPRoConPluginInterface {
@@ -48,6 +50,8 @@ namespace PRoConEvents {
 		public void init() {
 		    this.ExecuteCommand("procon.protected.send", "admin.listPlayers", "all");
 			this.Debug("WarControls enabled...");
+
+
         }
 
 		public void destroy(){
@@ -85,16 +89,31 @@ namespace PRoConEvents {
 
 			int readyTime = this.getReadyTime(teamID);
 			int otherReadyTime = this.getReadyTime(otherTeamID);
+            int newReadyTime = this.getUnixTimeStamp();
 
-            if(readyTime - otherReadyTime > this.startCountdown && otherReadyTime > 0
-                || this.getUnixTimeStamp() - otherReadyTime > this.getUnixTimeStamp()) {
-                this.ExecuteCommand("procon.protected.send", "admin.say", this.getLocalizedString("NotReadySoonEnough"), "all");    
-                this.resetReadyTime();
-            } else if(readyTime == 0) {
+            if(readyTime == 0 && otherReadyTime == 0) {
+                //everything 0, just set readyTime
                 this.setReadyTime(teamID);
                 this.ExecuteCommand("procon.protected.send", "admin.say",string.Format(this.getLocalizedString("TeamReady"), playerName, this.getTeamName(teamID)) , "all");
-            } else {
+            } else if(otherReadyTime > 0 && this.getUnixTimeStamp() - otherReadyTime <= this.startCountdown) {
+                //other team is already ready and team is ready within time
+                this.setReadyTime(teamID);
+                this.ExecuteCommand("procon.protected.send", "admin.say",string.Format(this.getLocalizedString("TeamReady"), playerName, this.getTeamName(teamID)) , "all");
+                Thread thread = new Thread(new ThreadStart(startMatch));
+                thread.Start();
+
+            } else if(otherReadyTime > 0 && this.getUnixTimeStamp() - otherReadyTime > this.startCountdown) {
+                //team wasnt ready soon enough
+                this.ExecuteCommand("procon.protected.send", "admin.say", string.Format(this.getLocalizedString("NotReadySoonEnough"), this.getTeamName(teamID)), "all");
+                this.resetReadyTime();
+
+            } else if(readyTime > 0 && this.getUnixTimeStamp() - readyTime <= this.startCountdown) {
+                //team is already ready
                 this.ExecuteCommand("procon.protected.send", "admin.say", string.Format(this.getLocalizedString("AlreadyReady"), this.getTeamName(teamID)), "all");
+            }  else if(readyTime > 0 && this.getUnixTimeStamp() - readyTime > this.startCountdown) {
+                this.ExecuteCommand("procon.protected.send", "admin.say", string.Format(this.getLocalizedString("NotReadySoonEnough"), this.getTeamName(otherTeamID)), "all");
+                this.resetReadyTime();
+    
             }
 		}
 
@@ -113,11 +132,19 @@ namespace PRoConEvents {
 		public void startMatch(){
             this.resetReadyTime();
 			for(int i = 0; i < this.startCountdown; i++){
-				this.ExecuteCommand("procon.protected.send", "admin.yell", string.Format(this.getLocalizedString("Live"), this.startCountdown - i), "all");
+				this.ExecuteCommand("procon.protected.send", "admin.yell", string.Format(this.getLocalizedString("Live"), this.startCountdown - i), "1000", "all");
+               
 			}
-			this.ExecuteCommand("procon.protected.send", "mapList.restartRound");
+            this.ExecuteCommand("procon.protected.send", "admin.yell", this.getLocalizedString("StartMatch"), "1000", "all");
+            Thread sleep = new Thread(new ThreadStart(sleepTimer));
+            sleep.Start();
 		}
 
+
+        public void sleepTimer() {
+            Thread.Sleep(15000);
+            this.restartLevel();
+        }
 
 
 		public override void OnListPlayers(List<CPlayerInfo> players, CPlayerSubset subset) {
@@ -197,7 +224,7 @@ namespace PRoConEvents {
         }
 
         public string GetPluginVersion() {
-            return "0.3a";
+            return "0.4b";
         }
 
         public string GetPluginAuthor() {
@@ -218,9 +245,12 @@ namespace PRoConEvents {
 
         public override void OnLevelLoaded(string mapFileName, string Gamemode, int roundsPlayed, int roundsTotal){
             if(this.doubleRestart) {
+                Thread.Sleep(10000);
                 this.restartLevel();
                 this.doubleRestart = false;
             } else {
+                Thread.Sleep(10000);
+                this.ExecuteCommand("procon.protected.send", "admin.say", this.getLocalizedString("MatchLive"), "all");
                 this.doubleRestart = true;
             }
         }
